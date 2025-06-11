@@ -1,0 +1,45 @@
+flowchart TD
+    A[System Startup] --> B[Initialize Serial & Pins]
+    B --> C[Power OFF Probe]
+    C --> D[Print System Info]
+    D --> E[Record Start Time]
+    E --> F[Take Initial Reading]
+    
+    F --> G[Main Loop Starts]
+    G --> H{Check Current Time vs<br/>Last Reading Time}
+    
+    H -->|Time >= Interval| I[Update Last Reading Time]
+    H -->|Time < Interval| J[Enter Light Sleep Mode]
+    
+    I --> K[Take Reading Process]
+    J --> L[Disable Peripherals<br/>ADC, SPI, I2C]
+    L --> M[Sleep 100ms in IDLE Mode<br/>Keep Timers Running]
+    M --> N[Re-enable Peripherals]
+    N --> G
+    
+    K --> O[Power ON Probe]
+    O --> P[Wait 2s for Stabilization]
+    P --> Q[Initialize SDI12]
+    Q --> R[Get Moisture Reading]
+    
+    R --> S[Send CC0! Command]
+    S --> T[Wait 3s for Measurement]
+    T --> U[Send CD0! to Get Data]
+    U --> V[Parse & Print Moisture Data<br/>Format: timestamp,M,val1,val2...]
+    
+    V --> W[Get Temperature Reading]
+    W --> X[Send CC2! Command]
+    X --> Y[Wait 3s for Measurement]
+    Y --> Z[Send CD0! to Get Data]
+    Z --> AA[Parse & Print Temperature Data<br/>Format: timestamp,T,val1,val2...]
+    
+    AA --> BB[Power OFF Probe]
+    BB --> CC[End SDI12 Communication]
+    CC --> G
+    
+    style A fill:#e1f5fe
+    style K fill:#fff3e0
+    style J fill:#f3e5f5
+    style V fill:#e8f5e8
+    style AA fill:#e8f5e8
+    style G fill:#fff9c4
