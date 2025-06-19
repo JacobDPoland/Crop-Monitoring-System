@@ -1,12 +1,14 @@
 /*
- * EnviroPro Soil Probe Continuous Monitoring
+ * EnviroPro Soil Probe Continuous Monitoring with Power Control
  * Queries soil moisture and temperature every 30 seconds
+ * Controls power via relay on pin 3 with 5-second stabilization delay
  * 
  * Wiring:
- * Red wire: +7V to +16VDC (connect to VIN if using 7-12V power supply)
+ * Red wire: +7V to +16VDC (connect through relay controlled by pin 3)
  * Black wire: GND
  * Blue wire: Digital Pin 2 (DATA_PIN)
  * Yellow wire: Not connected
+ * Pin 3: Controls relay power to sensor (HIGH = power on, LOW = power off)
  * 
  * Make sure to install the SDI-12 library:
  * Library Manager > Search "SDI-12" > Install "SDI-12" by Kevin M. Smith
@@ -15,25 +17,38 @@
 #include <SDI12.h>
 
 #define DATA_PIN 2        // Blue wire connected to digital pin 2
-#define POWER_PIN 3      // Set to a pin number if you want to control power, -1 if always powered
+#define POWER_PIN 3       // Controls relay power to sensor
 
 SDI12 mySDI12(DATA_PIN);
 
 String probeAddress = "0";  // Default probe address
 unsigned long lastMeasurement = 0;
 const unsigned long MEASUREMENT_INTERVAL = 30000; // 30 seconds
+const unsigned long POWER_STABILIZATION_DELAY = 5000; // 5 seconds for voltage stabilization
+bool sensorPowered = false;
 
 void setup() {
   Serial.begin(9600);
-  mySDI12.begin();
+  
+  // Configure power control pin
+  pinMode(POWER_PIN, OUTPUT);
+  digitalWrite(POWER_PIN, HIGH); // Start with sensor powered off (relay logic inverted)
+  sensorPowered = false;
   
   // Small delay to let everything initialize
   delay(500);
   
   Serial.println("========================================");
   Serial.println("EnviroPro Soil Probe Continuous Monitor");
+  Serial.println("with Power Control and Stabilization");
   Serial.println("========================================");
   Serial.println();
+  
+  // Power on sensor and initialize
+  powerOnSensor();
+  
+  // Initialize SDI-12 after sensor is powered and stabilized
+  mySDI12.begin();
   
   // Initialize and find probe address
   initializeProbe();
@@ -44,13 +59,26 @@ void setup() {
   // Take first measurement immediately
   takeMeasurements();
   lastMeasurement = millis();
+  
+  // Power off sensor after first measurement
+  powerOffSensor();
 }
 
 void loop() {
   // Check if it's time for next measurement
   if (millis() - lastMeasurement >= MEASUREMENT_INTERVAL) {
+    // Power on sensor before measurement
+    powerOnSensor();
+    
+    // Re-initialize SDI-12 communication
+    mySDI12.begin();
+    
+    // Take measurements
     takeMeasurements();
     lastMeasurement = millis();
+    
+    // Power off sensor after measurement to save power
+    powerOffSensor();
   }
   
   // Check for manual commands from Serial Monitor
@@ -59,11 +87,49 @@ void loop() {
     command.trim();
     if (command.length() > 0) {
       Serial.println("Manual command: " + command);
+      
+      // Power on sensor for manual commands
+      if (!sensorPowered) {
+        powerOnSensor();
+        mySDI12.begin();
+      }
+      
       sendCommand(command);
+      
+      // Leave sensor powered for potential follow-up commands
+      // It will be powered off at next measurement cycle
     }
   }
   
   delay(100); // Small delay to prevent overwhelming the system
+}
+
+void powerOnSensor() {
+  if (!sensorPowered) {
+    Serial.println("Powering ON sensor...");
+    digitalWrite(POWER_PIN, LOW); // Turn on relay (inverted logic)
+    sensorPowered = true;
+    
+    Serial.print("Waiting ");
+    Serial.print(POWER_STABILIZATION_DELAY / 1000);
+    Serial.println(" seconds for voltage stabilization...");
+    
+    // Wait for voltage to stabilize
+    delay(POWER_STABILIZATION_DELAY);
+    
+    Serial.println("Sensor power stabilized and ready.");
+  } else {
+    Serial.println("Sensor already powered on.");
+  }
+}
+
+void powerOffSensor() {
+  if (sensorPowered) {
+    Serial.println("Powering OFF sensor to save power...");
+    digitalWrite(POWER_PIN, HIGH); // Turn off relay (inverted logic)
+    sensorPowered = false;
+    Serial.println("Sensor powered off.");
+  }
 }
 
 void initializeProbe() {
@@ -100,6 +166,12 @@ void takeMeasurements() {
   Serial.print("Time: ");
   Serial.print(millis() / 1000);
   Serial.println(" seconds");
+  
+  // Ensure sensor is powered before measurements
+  if (!sensorPowered) {
+    Serial.println("ERROR: Sensor not powered! This shouldn't happen.");
+    return;
+  }
   
   // Measure soil moisture with salinity compensation
   measureSoilMoisture();
