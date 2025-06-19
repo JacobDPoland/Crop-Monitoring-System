@@ -21,7 +21,7 @@
 
 SDI12 mySDI12(DATA_PIN);
 
-String probeAddress = "0";  // Default probe address
+String probeAddress = "C";  // Default probe address
 unsigned long lastMeasurement = 0;
 const unsigned long MEASUREMENT_INTERVAL = 30000; // 30 seconds
 const unsigned long POWER_STABILIZATION_DELAY = 5000; // 5 seconds for voltage stabilization
@@ -38,12 +38,6 @@ void setup() {
   // Small delay to let everything initialize
   delay(500);
   
-  Serial.println("========================================");
-  Serial.println("EnviroPro Soil Probe Continuous Monitor");
-  Serial.println("with Power Control and Stabilization");
-  Serial.println("========================================");
-  Serial.println();
-  
   // Power on sensor and initialize
   powerOnSensor();
   
@@ -52,9 +46,6 @@ void setup() {
   
   // Initialize and find probe address
   initializeProbe();
-  
-  Serial.println("Starting continuous monitoring every 30 seconds...");
-  Serial.println("========================================");
   
   // Take first measurement immediately
   takeMeasurements();
@@ -86,8 +77,6 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim();
     if (command.length() > 0) {
-      Serial.println("Manual command: " + command);
-      
       // Power on sensor for manual commands
       if (!sensorPowered) {
         powerOnSensor();
@@ -95,9 +84,6 @@ void loop() {
       }
       
       sendCommand(command);
-      
-      // Leave sensor powered for potential follow-up commands
-      // It will be powered off at next measurement cycle
     }
   }
   
@@ -105,71 +91,40 @@ void loop() {
 }
 
 void powerOnSensor() {
+  Serial.println("Powering Sensor On");
   if (!sensorPowered) {
-    Serial.println("Powering ON sensor...");
     digitalWrite(POWER_PIN, LOW); // Turn on relay (inverted logic)
     sensorPowered = true;
     
-    Serial.print("Waiting ");
-    Serial.print(POWER_STABILIZATION_DELAY / 1000);
-    Serial.println(" seconds for voltage stabilization...");
-    
     // Wait for voltage to stabilize
     delay(POWER_STABILIZATION_DELAY);
-    
-    Serial.println("Sensor power stabilized and ready.");
-  } else {
-    Serial.println("Sensor already powered on.");
   }
 }
 
 void powerOffSensor() {
+  Serial.println("Powering Sensor Off");
   if (sensorPowered) {
-    Serial.println("Powering OFF sensor to save power...");
     digitalWrite(POWER_PIN, HIGH); // Turn off relay (inverted logic)
     sensorPowered = false;
-    Serial.println("Sensor powered off.");
   }
 }
 
 void initializeProbe() {
-  Serial.println("Initializing probe...");
-  
   // Query probe address
-  Serial.print("Querying probe address... ");
   String response = sendCommandWithResponse("?!");
   if (response.length() > 0) {
     probeAddress = response;
-    Serial.println("Found probe at address: " + probeAddress);
   } else {
-    Serial.println("No response - using default address 0");
-    probeAddress = "0";
-  }
-  
-  delay(1000);
-  
-  // Get probe ID
-  Serial.print("Getting probe ID... ");
-  String idCommand = probeAddress + "I!";
-  response = sendCommandWithResponse(idCommand);
-  if (response.length() > 0) {
-    Serial.println("Probe ID: " + response);
-  } else {
-    Serial.println("No ID response received");
+    Serial.println("Soil Probe C not detected");
+    probeAddress = "C";
   }
   
   delay(1000);
 }
 
 void takeMeasurements() {
-  Serial.println("\n--- New Measurement Cycle ---");
-  Serial.print("Time: ");
-  Serial.print(millis() / 1000);
-  Serial.println(" seconds");
-  
   // Ensure sensor is powered before measurements
   if (!sensorPowered) {
-    Serial.println("ERROR: Sensor not powered! This shouldn't happen.");
     return;
   }
   
@@ -180,20 +135,14 @@ void takeMeasurements() {
   
   // Measure temperature in Celsius
   measureTemperature();
-  
-  Serial.println("--- End Measurement Cycle ---\n");
 }
 
 void measureSoilMoisture() {
-  Serial.println("Measuring soil moisture...");
-  
   // Send measurement command (C0 = moisture with salinity compensation)
   String measureCommand = probeAddress + "C0!";
   String response = sendCommandWithResponse(measureCommand);
   
   if (response.length() > 0) {
-    Serial.println("Measurement initiated: " + response);
-    
     // Parse timing from response (format: TTTNNN where TTT is time, NNN is number of values)
     // Wait for measurement to complete (add extra time for safety)
     int measureTime = 3000; // Default 3 seconds if parsing fails
@@ -202,9 +151,6 @@ void measureSoilMoisture() {
       measureTime = timeStr.toInt() * 1000 + 1000; // Convert to ms and add 1s buffer
     }
     
-    Serial.print("Waiting ");
-    Serial.print(measureTime / 1000);
-    Serial.println(" seconds for measurement...");
     delay(measureTime);
     
     // Request data
@@ -212,26 +158,17 @@ void measureSoilMoisture() {
     String dataResponse = sendCommandWithResponse(dataCommand);
     
     if (dataResponse.length() > 0) {
-      Serial.println("Soil Moisture Data: " + dataResponse);
       parseMoistureData(dataResponse);
-    } else {
-      Serial.println("No moisture data received");
     }
-  } else {
-    Serial.println("No response to moisture measurement command");
   }
 }
 
 void measureTemperature() {
-  Serial.println("Measuring temperature...");
-  
   // Send measurement command (C2 = temperature in Celsius)
   String measureCommand = probeAddress + "C2!";
   String response = sendCommandWithResponse(measureCommand);
   
   if (response.length() > 0) {
-    Serial.println("Measurement initiated: " + response);
-    
     // Wait for measurement to complete
     int measureTime = 3000; // Default 3 seconds
     if (response.length() >= 6) {
@@ -239,9 +176,6 @@ void measureTemperature() {
       measureTime = timeStr.toInt() * 1000 + 1000; // Convert to ms and add 1s buffer
     }
     
-    Serial.print("Waiting ");
-    Serial.print(measureTime / 1000);
-    Serial.println(" seconds for measurement...");
     delay(measureTime);
     
     // Request data
@@ -249,23 +183,16 @@ void measureTemperature() {
     String dataResponse = sendCommandWithResponse(dataCommand);
     
     if (dataResponse.length() > 0) {
-      Serial.println("Temperature Data: " + dataResponse);
       parseTemperatureData(dataResponse);
-    } else {
-      Serial.println("No temperature data received");
     }
-  } else {
-    Serial.println("No response to temperature measurement command");
   }
 }
 
 void parseMoistureData(String data) {
   // Data format: address + moisture values separated by + or -
-  // Example: 0+001.84+001.52+001.58+001.61+000.96+000.04+000.00+000.05
-  Serial.println("Soil Moisture Readings (% VWC):");
+  Serial.print("Moist");
   
   int startIndex = 1; // Skip the address character
-  int sensorNum = 1;
   
   while (startIndex < data.length()) {
     int nextPlus = data.indexOf('+', startIndex);
@@ -279,8 +206,8 @@ void parseMoistureData(String data) {
     
     if (nextDelim > startIndex) {
       String value = data.substring(startIndex, nextDelim);
-      Serial.println("  Sensor " + String(sensorNum) + ": " + value + "%");
-      sensorNum++;
+      Serial.print(",");
+      Serial.print(value);
     }
     
     startIndex = nextDelim + 1;
@@ -291,20 +218,19 @@ void parseMoistureData(String data) {
         endNum++;
       }
       String value = String(data.charAt(startIndex-1)) + data.substring(startIndex, endNum);
-      Serial.println("  Sensor " + String(sensorNum) + ": " + value + "%");
-      sensorNum++;
+      Serial.print(",");
+      Serial.print(value);
       startIndex = endNum;
     }
   }
+  Serial.println(); // End the CSV line
 }
 
 void parseTemperatureData(String data) {
   // Data format: address + temperature values separated by + or -
-  // Example: 0+028.06+027.97+027.90+028.08+029.05+028.77+028.05+027.02
-  Serial.println("Temperature Readings (°C):");
+  Serial.print("Temp");
   
   int startIndex = 1; // Skip the address character
-  int sensorNum = 1;
   
   while (startIndex < data.length()) {
     int nextPlus = data.indexOf('+', startIndex);
@@ -318,8 +244,8 @@ void parseTemperatureData(String data) {
     
     if (nextDelim > startIndex) {
       String value = data.substring(startIndex, nextDelim);
-      Serial.println("  Sensor " + String(sensorNum) + ": " + value + "°C");
-      sensorNum++;
+      Serial.print(",");
+      Serial.print(value);
     }
     
     startIndex = nextDelim + 1;
@@ -330,16 +256,16 @@ void parseTemperatureData(String data) {
         endNum++;
       }
       String value = String(data.charAt(startIndex-1)) + data.substring(startIndex, endNum);
-      Serial.println("  Sensor " + String(sensorNum) + ": " + value + "°C");
-      sensorNum++;
+      Serial.print(",");
+      Serial.print(value);
       startIndex = endNum;
     }
   }
+  Serial.println(); // End the CSV line
 }
 
 String sendCommandWithResponse(String command) {
   mySDI12.sendCommand(command);
-  Serial.println("Sent: " + command);
   
   // Wait for response with timeout
   String response = "";
@@ -351,7 +277,6 @@ String sendCommandWithResponse(String command) {
       char c = mySDI12.read();
       if (c == '\n' || c == '\r') {
         if (response.length() > 0) {
-          Serial.println("Response: " + response);
           return response;
         }
       } else {
@@ -361,13 +286,7 @@ String sendCommandWithResponse(String command) {
     delay(10);
   }
   
-  if (response.length() > 0) {
-    Serial.println("Response: " + response);
-    return response;
-  } else {
-    Serial.println("No response received (timeout)");
-    return "";
-  }
+  return response;
 }
 
 void sendCommand(String command) {
