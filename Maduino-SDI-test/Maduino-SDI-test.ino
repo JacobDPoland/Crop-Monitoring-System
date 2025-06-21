@@ -32,7 +32,11 @@ void setup() {
   SerialUSB.println();
 
   testProbeAddress();
-  testProbeInfoWildcard();
+  testProbeID();
+  testProbeID();
+  testProbeID();
+  testProbeID();
+  testProbeID();
   testProbeID();
 
   // testMoistureReading();
@@ -64,46 +68,12 @@ void loop() {
 void testProbeAddress() {
   SerialUSB.println("1. Testing probe address query...");
   sendCommand("?!");
-  delay(5000);
 }
 
 void testProbeID() {
   SerialUSB.println("2. Testing probe ID (address C)...");
   sendCommand("CI!");
-  delay(5000);  // Increased delay to ensure response is captured
 }
-
-void testProbeInfoWildcard() {
-  SerialUSB.println("2a. Testing wildcard info query...");
-  sendCommand("?I!");
-  delay(5000);
-}
-
-// void testMoistureReading() {
-//   SerialUSB.println("3. Testing moisture measurement...");
-
-//   sendCommand("CC0!");  // Address C - measure moisture with salinity compensation
-//   SerialUSB.println("Waiting for measurement to complete...");
-//   delay(2000);
-
-//   SerialUSB.println("Requesting measurement data...");
-//   sendCommand("CD0!");  // Read the data
-//   delay(2000);
-// }
-
-// void testTemperatureReading() {
-//   SerialUSB.println("4. Testing temperature measurement...");
-
-//   // Start measurement
-//   sendCommand("CC2!");  // Address C - measure temperature in Celsius
-//   SerialUSB.println("Waiting for measurement to complete...");
-//   delay(2000);
-
-//   // Request data
-//   SerialUSB.println("Requesting measurement data...");
-//   sendCommand("CD0!");
-//   delay(2000);
-// }
 
 void sendCommand(String command) {
   SerialUSB.println("Sending: " + command);
