@@ -15,8 +15,6 @@
 #include <SDI12.h>
 
 #define DATA_PIN 2        // Blue wire connected to digital pin 2
-#define POWER_PIN -1      // Set to a pin number if you want to control power, -1 if always powered
-
 SDI12 mySDI12(DATA_PIN);
 
 String sdiResponse = "";
@@ -37,13 +35,12 @@ void setup() {
   
   // Test sequence with longer delays
   testProbeAddress();
-  delay(3000);
   testProbeID();
-  delay(3000);
-  testMoistureReading();
-  delay(3000);
-  testTemperatureReading();
-  delay(3000);
+  
+  // testMoistureReading();
+  // delay(3000);
+  // testTemperatureReading();
+  // delay(3000);
   
   SerialUSB.println("========================================");
   SerialUSB.println("Test complete. You can now send manual commands.");
@@ -90,7 +87,7 @@ void testProbeAddress() {
 void testProbeID() {
   SerialUSB.println("2. Testing probe ID (address C)...");
   sendCommand("CI!");
-  delay(3000);  // Increased delay to ensure response is captured
+  delay(2000);  // Increased delay to ensure response is captured
 }
 
 void testMoistureReading() {
@@ -99,12 +96,12 @@ void testMoistureReading() {
   // Start measurement
   sendCommand("CC0!");  // Address C - measure moisture with salinity compensation
   SerialUSB.println("Waiting for measurement to complete...");
-  delay(5000);         // Increased wait time for measurement (probe may need more time)
+  delay(2000);      
   
   // Request data
   SerialUSB.println("Requesting measurement data...");
   sendCommand("CD0!");  // Read the data
-  delay(3000);         // Wait for data response
+  delay(2000);       
 }
 
 void testTemperatureReading() {
@@ -113,20 +110,15 @@ void testTemperatureReading() {
   // Start measurement
   sendCommand("CC2!");  // Address C - measure temperature in Celsius
   SerialUSB.println("Waiting for measurement to complete...");
-  delay(5000);         // Increased wait time for measurement
+  delay(2000);       
   
   // Request data
   SerialUSB.println("Requesting measurement data...");
-  sendCommand("CD0!");  // Read the data
-  delay(3000);         // Wait for data response
+  sendCommand("CD0!"); 
+  delay(2000);         
 }
 
 void sendCommand(String command) {
-  // Clear any pending data before sending new command
-  while (mySDI12.available()) {
-    mySDI12.read();
-  }
-  
   mySDI12.sendCommand(command);
   SerialUSB.println("Sent: " + command);
   
