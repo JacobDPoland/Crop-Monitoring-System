@@ -1,5 +1,5 @@
 /*
- * EnviroPro Soil Probe Test Code
+ * EnviroPro Soil Probe Test Code - Maduino Zero Version
  * Tests connection to EnviroPro EP100G series soil probe
  * 
  * Wiring:
@@ -25,25 +25,25 @@ String myCommand = "";
 void setup() {
   SerialUSB.begin(115200);
   while (!SerialUSB) {}  // wait for serial
-  mySDI12.begin();
   
-  // Small delay to let everything initialize
-  delay(500);
+  // Initialize SDI-12 with a longer delay for Maduino Zero
+  mySDI12.begin();
+  delay(1000);  // Increased delay for board initialization
   
   SerialUSB.println("========================================");
   SerialUSB.println("Maduino EnviroPro Soil Probe Connection Test");
   SerialUSB.println("========================================");
   SerialUSB.println();
   
-  // Test sequence
+  // Test sequence with longer delays
   testProbeAddress();
-  delay(2000);
+  delay(3000);
   testProbeID();
-  delay(2000);
+  delay(3000);
   testMoistureReading();
-  delay(2000);
+  delay(3000);
   testTemperatureReading();
-  delay(2000);
+  delay(3000);
   
   SerialUSB.println("========================================");
   SerialUSB.println("Test complete. You can now send manual commands.");
@@ -89,51 +89,62 @@ void testProbeAddress() {
 
 void testProbeID() {
   SerialUSB.println("2. Testing probe ID (address C)...");
-  
-  // Use probe address C
   sendCommand("CI!");
-  delay(2000);
+  delay(3000);  // Increased delay to ensure response is captured
 }
 
 void testMoistureReading() {
   SerialUSB.println("3. Testing moisture measurement...");
   
-  // Use probe address C
+  // Start measurement
   sendCommand("CC0!");  // Address C - measure moisture with salinity compensation
-  delay(2000);         // Wait for measurement (probe says 0002 seconds)
+  SerialUSB.println("Waiting for measurement to complete...");
+  delay(5000);         // Increased wait time for measurement (probe may need more time)
+  
+  // Request data
+  SerialUSB.println("Requesting measurement data...");
   sendCommand("CD0!");  // Read the data
-  delay(2000);
+  delay(3000);         // Wait for data response
 }
 
 void testTemperatureReading() {
   SerialUSB.println("4. Testing temperature measurement...");
   
-  // Use probe address C
+  // Start measurement
   sendCommand("CC2!");  // Address C - measure temperature in Celsius
-  delay(2000);         // Wait for measurement
+  SerialUSB.println("Waiting for measurement to complete...");
+  delay(5000);         // Increased wait time for measurement
+  
+  // Request data
+  SerialUSB.println("Requesting measurement data...");
   sendCommand("CD0!");  // Read the data
-  delay(2000);
+  delay(3000);         // Wait for data response
 }
 
 void sendCommand(String command) {
+  // Clear any pending data before sending new command
+  while (mySDI12.available()) {
+    mySDI12.read();
+  }
+  
   mySDI12.sendCommand(command);
   SerialUSB.println("Sent: " + command);
   
-  // Give some time for response
-  delay(100);
+  // Give more time for response on Maduino Zero
+  delay(300);  // Increased from 100ms
   
   // Read immediate response if available
   String response = "";
   int timeout = 0;
-  while (timeout < 100) {  // 1 second timeout
+  while (timeout < 300) {  // Increased timeout to 3 seconds
     if (mySDI12.available()) {
       char c = mySDI12.read();
       if (c == '\n' || c == '\r') {
         if (response.length() > 0) {
           SerialUSB.println("Response: " + response);
-          break;
+          return;  // Exit once we get a complete response
         }
-      } else {
+      } else if (c != ' ' && c != 0) {  // Filter out spaces and null characters
         response += c;
       }
     }
@@ -141,7 +152,9 @@ void sendCommand(String command) {
     timeout++;
   }
   
-  if (response.length() == 0) {
+  if (response.length() > 0) {
+    SerialUSB.println("Response: " + response);
+  } else {
     SerialUSB.println("No response received");
   }
 }
