@@ -1,27 +1,63 @@
+/*
+ * EnviroPro Soil Probe Test Code
+ * Tests connection to EnviroPro EP100G series soil probe
+ * 
+ * Wiring:
+ * Red wire: +7V to +16VDC (connect to VIN if using 7-12V power supply)
+ * Black wire: GND
+ * Blue wire: Digital Pin 2 (DATA_PIN)
+ * Yellow wire: Not connected
+ * 
+ * Make sure to install the SDI-12 library:
+ * Library Manager > Search "SDI-12" > Install "SDI-12" by Kevin M. Smith
+ */
+
 #include <SDI12.h>
 
-#define DATA_PIN 2        // SDI-12 Data (Blue wire)
+#define DATA_PIN 2        // Blue wire connected to digital pin 2
+#define POWER_PIN -1      // Set to a pin number if you want to control power, -1 if always powered
 
 SDI12 mySDI12(DATA_PIN);
+
 String sdiResponse = "";
 String myCommand = "";
 
 void setup() {
-  SerialUSB.begin(115200);  // Use SerialUSB on Maduino Zero
-  while (!SerialUSB);       // Wait for USB to connect
-
+  SerialUSB.begin(115200);
+  while (!SerialUSB) {}  // wait for serial
   mySDI12.begin();
-  delay(500);               // Give probe time to stabilize
-
+  
+  // Small delay to let everything initialize
+  delay(500);
+  
   SerialUSB.println("========================================");
-  SerialUSB.println("EnviroPro Soil Probe - Maduino Zero Test");
+  SerialUSB.println("Maduino EnviroPro Soil Probe Connection Test");
   SerialUSB.println("========================================");
-  SerialUSB.println("Type commands like CI!, CC0!, CD0!, etc.");
   SerialUSB.println();
+  
+  // Test sequence
+  testProbeAddress();
+  delay(2000);
+  testProbeID();
+  delay(2000);
+  testMoistureReading();
+  delay(2000);
+  testTemperatureReading();
+  delay(2000);
+  
+  SerialUSB.println("========================================");
+  SerialUSB.println("Test complete. You can now send manual commands.");
+  SerialUSB.println("Commands to try:");
+  SerialUSB.println("  ?!     - Query probe address");
+  SerialUSB.println("  CI!    - Get probe ID (address C)");
+  SerialUSB.println("  CC0!   - Measure moisture with salinity compensation");
+  SerialUSB.println("  CC2!   - Measure temperature in Celsius");
+  SerialUSB.println("  CC1!   - Measure salinity");
+  SerialUSB.println("========================================");
 }
 
 void loop() {
-  // Read from USB Serial
+  // Check for incoming commands from SerialUSB Monitor
   if (SerialUSB.available()) {
     String command = SerialUSB.readStringUntil('\n');
     command.trim();
@@ -30,8 +66,8 @@ void loop() {
       sendCommand(command);
     }
   }
-
-  // Read probe response
+  
+  // Check for responses from probe
   if (mySDI12.available()) {
     char c = mySDI12.read();
     if (c == '\n' || c == '\r') {
@@ -45,14 +81,51 @@ void loop() {
   }
 }
 
+void testProbeAddress() {
+  SerialUSB.println("1. Testing probe address query...");
+  sendCommand("?!");
+  delay(2000);
+}
+
+void testProbeID() {
+  SerialUSB.println("2. Testing probe ID (address C)...");
+  
+  // Use probe address C
+  sendCommand("CI!");
+  delay(2000);
+}
+
+void testMoistureReading() {
+  SerialUSB.println("3. Testing moisture measurement...");
+  
+  // Use probe address C
+  sendCommand("CC0!");  // Address C - measure moisture with salinity compensation
+  delay(2000);         // Wait for measurement (probe says 0002 seconds)
+  sendCommand("CD0!");  // Read the data
+  delay(2000);
+}
+
+void testTemperatureReading() {
+  SerialUSB.println("4. Testing temperature measurement...");
+  
+  // Use probe address C
+  sendCommand("CC2!");  // Address C - measure temperature in Celsius
+  delay(2000);         // Wait for measurement
+  sendCommand("CD0!");  // Read the data
+  delay(2000);
+}
+
 void sendCommand(String command) {
   mySDI12.sendCommand(command);
-  delay(100);  // SDI-12 spec requires ≥10ms pause before reading
-
-  // Wait for probe to respond (max 1s)
+  SerialUSB.println("Sent: " + command);
+  
+  // Give some time for response
+  delay(100);
+  
+  // Read immediate response if available
   String response = "";
   int timeout = 0;
-  while (timeout < 100) {  // 100 × 10ms = 1s
+  while (timeout < 100) {  // 1 second timeout
     if (mySDI12.available()) {
       char c = mySDI12.read();
       if (c == '\n' || c == '\r') {
@@ -63,13 +136,12 @@ void sendCommand(String command) {
       } else {
         response += c;
       }
-    } else {
-      delay(10);
-      timeout++;
     }
+    delay(10);
+    timeout++;
   }
-
+  
   if (response.length() == 0) {
-    SerialUSB.println("No response received.");
+    SerialUSB.println("No response received");
   }
 }
