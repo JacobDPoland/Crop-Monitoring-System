@@ -1,108 +1,67 @@
-/* Code by Jacob Poland
- * EnviroPro Soil Probe Test Code - Maduino Zero Version
- * Tests connection to EnviroPro EP100G series soil probe
- * 
- * Wiring:
- * Red wire: +7V to +16VDC (connect to VIN if using 7-12V power supply)
- * Black wire: GND
- * Blue wire: Digital Pin 2 (DATA_PIN)
- * 
- * Make sure to install the SDI-12 library:
- * Library Manager > Search "SDI-12" > Install "SDI-12" by Kevin M. Smith
+/**
+ * @example{lineno} a_wild_card.ino
+ * @copyright Stroud Water Research Center
+ * @license This example is published under the BSD-3 license.
+ * @author Kevin M.Smith <SDI12@ethosengineering.org>
+ * @date August 2013
+ *
+ * @brief Example A: Using the Wildcard - Getting Single Sensor Information
+ *
+ * This is a simple demonstration of the SDI-12 library for Arduino.
+ *
+ * It requests information about the attached sensor, including its address and
+ * manufacturer info.
  */
 
 #include <SDI12.h>
 
-#define DATA_PIN 3  // Blue wire connected to digital pin 2
-SDI12 mySDI12(DATA_PIN);
+#ifndef SDI12_DATA_PIN
+#define SDI12_DATA_PIN 2
+#endif
+#ifndef SDI12_POWER_PIN
+#define SDI12_POWER_PIN -1
+#endif
 
-String sdiResponse = "";
-String myCommand = "";
+uint32_t SerialUSBBaud = 115200; /*!< The baud rate for the output SerialUSB port */
+int8_t   dataPin    = SDI12_DATA_PIN;  /*!< The pin of the SDI-12 data bus */
+int8_t   powerPin   = SDI12_POWER_PIN; /*!< The sensor power pin (or -1) */
+
+/** Define the SDI-12 bus */
+SDI12 mySDI12(dataPin);
+
+/**
+  '?' is a wildcard character which asks any and all sensors to respond
+  'I' indicates that the command wants information about the sensor
+  '!' finishes the command
+*/
+String myCommand = "CI!";
 
 void setup() {
-  SerialUSB.begin(115200);
-  while (!SerialUSB && millis() < 10000L) {}  // wait for SerialUSB
+  SerialUSB.begin(SerialUSBBaud);
+  while (!SerialUSB && millis() < 10000L);
 
+  SerialUSB.println("Opening SDI-12 bus...");
   mySDI12.begin();
-  delay(500);
+  delay(500);  // allow things to settle
 
-  SerialUSB.println("========================================");
-  SerialUSB.println("Maduino EnviroPro Soil Probe Connection Test");
-  SerialUSB.println("========================================");
-  SerialUSB.println();
 
-  testProbeAddress();
-  testProbeID();
-  testProbeID();
-  testProbeID();
-  testProbeID();
-  testProbeID();
-  testProbeID();
-
-  // testMoistureReading();
-  // testTemperatureReading();
-
-  SerialUSB.println("========================================");
-  SerialUSB.println("Test complete. You can now send manual commands.");
-  SerialUSB.println("Commands to try:");
-  SerialUSB.println("  ?!     - Query probe address");
-  SerialUSB.println("  CI!    - Get probe ID (address C)");
-  SerialUSB.println("  CC0!   - Measure moisture with salinity compensation");
-  SerialUSB.println("  CC2!   - Measure temperature in Celsius");
-  SerialUSB.println("  CC1!   - Measure salinity");
-  SerialUSB.println("========================================");
 }
 
 void loop() {
-  // Check for incoming commands from SerialUSB Monitor
-  if (SerialUSB.available()) {
-    String command = SerialUSB.readStringUntil('\n');
-    command.trim();
-    if (command.length() > 0) {
-      SerialUSB.println("Sending: " + command);
-      sendCommand(command);
+  
+  mySDI12.forceHold();
+  mySDI12.sendCommand(myCommand);
+  mySDI12.forceListen();
+  delay(300);                    // wait a while for a response
+  while (mySDI12.available()) {  // write the response to the screen
+    int result = mySDI12.read();
+    if (result == 127){
+      SerialUSB.println("DEL");
+    }
+    else {
+      SerialUSB.println((char) result);
     }
   }
-}
-
-void testProbeAddress() {
-  SerialUSB.println("1. Testing probe address query...");
-  sendCommand("?!");
-}
-
-void testProbeID() {
-  SerialUSB.println("2. Testing probe ID (address C)...");
-  sendCommand("CI!");
-}
-
-void sendCommand(String command) {
-  SerialUSB.println("Sending: " + command);
-  mySDI12.sendCommand(command);
-
-  delay(1000);
-
-  SerialUSB.print("Response (in curly brackets): {");
-
-  // Read with timeout and character counting
-  unsigned long startTime = millis();
-  int charCount = 0;
-  bool dataReceived = false;
-
-  while (millis() - startTime < 10000) {
-    while (mySDI12.available()) {
-      char c = mySDI12.read();
-      SerialUSB.print(c);
-      charCount++;
-      dataReceived = true;
-      startTime = millis();  // Reset timeout when data received
-    }
-    delay(10);
-  }
-
-  SerialUSB.println("}");
-  SerialUSB.println("Characters received: " + String(charCount));
-
-  if (!dataReceived) {
-    SerialUSB.println("*** NO RESPONSE RECEIVED ***");
-  }
+  SerialUSB.println("-");
+  delay(1000);  // print again in three seconds
 }

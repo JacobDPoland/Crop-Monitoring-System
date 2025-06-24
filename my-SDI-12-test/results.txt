@@ -1,0 +1,29 @@
+22:43:50.729 -> ========================================
+22:43:50.793 -> EnviroPro Soil Probe Connection Test
+22:43:50.826 -> ========================================
+22:43:50.895 -> 
+22:43:50.895 -> 1. Testing probe address query...
+22:43:50.932 -> Sent: ?!
+22:43:51.011 -> Response: C
+22:43:54.999 -> 2. Testing probe ID (address C)...
+22:43:55.032 -> Sent: CI!
+22:43:55.413 -> Response: C13EP100GL-08 01230728120622
+22:43:59.439 -> 3. Testing moisture measurement...
+22:43:59.472 -> Sent: CC0!
+22:43:59.640 -> Response: C00208
+22:44:01.731 -> Sent: CD0!
+22:44:02.388 -> Response: C+000.72+001.90+005.20+005.42+003.68+001.32+001.13+001.45
+22:44:06.410 -> 4. Testing temperature measurement...
+22:44:06.443 -> Sent: CC2!
+22:44:06.634 -> Response: C00208
+22:44:08.659 -> Sent: CD0!
+22:44:09.342 -> Response: C+020.92+020.98+020.99+021.24+020.73+020.42+020.26+020.38
+22:44:13.344 -> ========================================
+22:44:13.410 -> Test complete. You can now send manual commands.
+22:44:13.442 -> Commands to try:
+22:44:13.475 ->   ?!     - Query probe address
+22:44:13.507 ->   CI!    - Get probe ID (address C)
+22:44:13.540 ->   CC0!   - Measure moisture with salinity compensation
+22:44:13.607 ->   CC2!   - Measure temperature in Celsius
+22:44:13.639 ->   CC1!   - Measure salinity
+22:44:13.672 -> ========================================
