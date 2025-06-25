@@ -14,7 +14,7 @@
 
 #include <SDI12.h>
 
-#define DATA_PIN 2        // Blue wire connected to digital pin 2
+#define DATA_PIN 3        // Blue wire connected to digital pin 2
 #define POWER_PIN -1      // Set to a pin number if you want to control power, -1 if always powered
 
 SDI12 mySDI12(DATA_PIN);
@@ -56,6 +56,8 @@ void setup() {
 }
 
 void loop() {
+  testMoistureReading();
+  delay(2000);
   // Check for incoming commands from Serial Monitor
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
