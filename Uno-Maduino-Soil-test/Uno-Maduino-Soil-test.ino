@@ -1,6 +1,7 @@
 /*
- * EnviroPro Soil Probe Test Code
- * Tests connection to EnviroPro EP100G series soil probe
+ * This code is used to test the connection
+ * between an EnviroPro sensor, an Arduino Uno,
+ * and a Maduino Zero. 
  * 
  * Make sure to install the SDI-12 library:
  * Library Manager > Search "SDI-12" > Install "SDI-12" by Kevin M. Smith
@@ -47,14 +48,22 @@ void testProbeID() {
 void takeMoistureReading() {  
   sendCommand("CC0!");  // Address C - measure moisture with salinity compensation
   delay(2000);         // Wait for measurement (probe says 0002 seconds)
-  Serial.println("Moist," + sendCommand("CD0!"));  // Read the data
+  String response = sendCommand("CD0!");
+  response.replace("+", ",+");
+  response.replace("-", ",-");
+  response.replace("C", "");
+  Serial.println("Moist" + response);  // Read the data
   delay(2000);
 }
 
 void takeTemperatureReading() {
   sendCommand("CC2!");  // Address C - measure temperature in Celsius
   delay(2000);         // Wait for measurement
-  Serial.println("Temp," + sendCommand("CD0!"));  // Read the data
+  String response = sendCommand("CD0!");
+  response.replace("+", ",+");
+  response.replace("-", ",-");
+  response.replace("C", "");
+  Serial.println("Temp" + response);  // Read the data
   delay(2000);
 }
 
