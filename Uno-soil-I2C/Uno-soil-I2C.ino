@@ -15,7 +15,7 @@ bool sensorPowered = false;
 
 void setup() {
   Serial.begin(9600);
-  Wire.beginTransmission(SLAVE_ADDRESS);
+  Wire.begin(); // Initialize I2C as master
   
   // Configure power control pin
   pinMode(POWER_PIN, OUTPUT);
@@ -177,7 +177,8 @@ void measureTemperature() {
 
 void parseMoistureData(String data) {
   // Data format: address + moisture values separated by + or -
-  Serial.print("Moist");
+  String outputData = "Moist";
+  Serial.print(outputData);
   
   int startIndex = 1; // Skip the address character
   
@@ -193,6 +194,8 @@ void parseMoistureData(String data) {
     
     if (nextDelim > startIndex) {
       String value = data.substring(startIndex, nextDelim);
+      outputData += ",";
+      outputData += value;
       Serial.print(",");
       Serial.print(value);
     }
@@ -205,17 +208,23 @@ void parseMoistureData(String data) {
         endNum++;
       }
       String value = String(data.charAt(startIndex-1)) + data.substring(startIndex, endNum);
+      outputData += ",";
+      outputData += value;
       Serial.print(",");
       Serial.print(value);
       startIndex = endNum;
     }
   }
   Serial.println(); // End the CSV line
+  
+  // Transmit via I2C
+  transmitI2C(outputData);
 }
 
 void parseTemperatureData(String data) {
   // Data format: address + temperature values separated by + or -
-  Serial.print("Temp");
+  String outputData = "Temp";
+  Serial.print(outputData);
   
   int startIndex = 1; // Skip the address character
   
@@ -231,6 +240,8 @@ void parseTemperatureData(String data) {
     
     if (nextDelim > startIndex) {
       String value = data.substring(startIndex, nextDelim);
+      outputData += ",";
+      outputData += value;
       Serial.print(",");
       Serial.print(value);
     }
@@ -243,12 +254,54 @@ void parseTemperatureData(String data) {
         endNum++;
       }
       String value = String(data.charAt(startIndex-1)) + data.substring(startIndex, endNum);
+      outputData += ",";
+      outputData += value;
       Serial.print(",");
       Serial.print(value);
       startIndex = endNum;
     }
   }
   Serial.println(); // End the CSV line
+  
+  // Transmit via I2C
+  transmitI2C(outputData);
+}
+
+void transmitI2C(String data) {
+  // Split data into chunks if it's too long (I2C buffer limit is typically 32 bytes)
+  int maxChunkSize = 30; // Leave some buffer space
+  int dataLength = data.length();
+  
+  for (int i = 0; i < dataLength; i += maxChunkSize) {
+    int chunkEnd = min(i + maxChunkSize, dataLength);
+    String chunk = data.substring(i, chunkEnd);
+    
+    // Begin transmission to slave device
+    Wire.beginTransmission(SLAVE_ADDRESS);
+    delayMicroseconds(10);
+    
+    // Send chunk as bytes
+    Wire.write(chunk.c_str(), chunk.length());
+    
+    // If this is the last chunk, add newline character
+    if (chunkEnd >= dataLength) {
+      Wire.write('\n');
+    }
+    
+    // End transmission
+    byte error = Wire.endTransmission();
+    
+    // Check for transmission errors
+    if (error != 0) {
+      Serial.print("I2C Transmission error: ");
+      Serial.println(error);
+    }
+    
+    // Small delay between chunks if there are more
+    if (chunkEnd < dataLength) {
+      delay(10);
+    }
+  }
 }
 
 String sendCommandWithResponse(String command) {
