@@ -1,19 +1,3 @@
-/*
- * EnviroPro Soil Probe Continuous Monitoring with Power Control
- * Queries soil moisture and temperature every 30 seconds
- * Controls power via relay on pin 3 with 5-second stabilization delay
- * 
- * Wiring:
- * Red wire: +7V to +16VDC (connect through relay controlled by pin 3)
- * Black wire: GND
- * Blue wire: Digital Pin 2 (DATA_PIN)
- * Yellow wire: Not connected
- * Pin 3: Controls relay power to sensor (HIGH = power on, LOW = power off)
- * 
- * Make sure to install the SDI-12 library:
- * Library Manager > Search "SDI-12" > Install "SDI-12" by Kevin M. Smith
- */
-
 #include <SDI12.h>
 
 #define DATA_PIN 2        // Blue wire connected to digital pin 2
